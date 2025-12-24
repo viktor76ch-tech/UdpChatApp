@@ -1,13 +1,10 @@
 ﻿namespace UdpChatApp.Models
 {
-    public class MessageType
-    {
-        public enum Message
+        public enum MessageType
         {
             Public,
             Private,
             Group,
             System
         }
-    }
 }
