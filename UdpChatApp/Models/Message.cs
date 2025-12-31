@@ -30,5 +30,35 @@ namespace UdpChatApp.Models
             _type = type;
             _timestamp = DateTime.Now;
         }
+
+        public string Text
+        {
+            get => _text;
+            set => SetProperty(ref _text, value);
+        }
+
+        public string SenderName
+        {
+            get => _senderName;
+            set => SetProperty(ref _text, value);
+        }
+
+        public string Recipient
+        {
+            get => _recipient;
+            set => SetProperty(ref _text, value);
+        }
+
+        public MessageType Type
+        {
+            get => _type;
+            set => SetProperty(ref _type, value);
+        }
+
+        public DateTime Timestamp
+        {
+            get => _timestamp;
+            set => SetProperty(ref _timestamp, value);
+        }
     }
 }
