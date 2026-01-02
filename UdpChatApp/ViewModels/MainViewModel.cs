@@ -1,6 +1,8 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using UdpChatApp.Models;
+using UdpChatApp.Services;
 
 
 namespace UdpChatApp.ViewModels
@@ -10,6 +12,7 @@ namespace UdpChatApp.ViewModels
         private string _messageText;
         private string _status;
         private bool _isConnected;
+        private readonly NetworkService _networkService;
 
         public ObservableCollection<Message> Messages { get; } = new ObservableCollection<Message>();
 
@@ -37,7 +40,8 @@ namespace UdpChatApp.ViewModels
         {
             Status = "Не подключен";
             IsConnected = false;
-
+            _networkService = new NetworkService();
+            _networkService.MessageReceived += OnMessageReceived;
             SendMessadgeCommand = new RelayCommand(execute: SendMessadge, 
                 canExecute: CanSendMessadge);
 
@@ -60,6 +64,7 @@ namespace UdpChatApp.ViewModels
             };
 
             Messages.Add(message);
+            _networkService.SendMessage(MessageText);
             MessageText = string.Empty;
         }
 
@@ -67,11 +72,13 @@ namespace UdpChatApp.ViewModels
         {
             if (IsConnected)
             {
+                _networkService.Disconnect();
                 Status = "Не подключен";
                 IsConnected = false;
             }
             else
             {
+                _networkService.Connect("TestUser", "127.0.0.1", 5000);
                 Status = "Подключен";
                 IsConnected = true;
                 Messages.Add(new Message
@@ -82,6 +89,13 @@ namespace UdpChatApp.ViewModels
                     Type = MessageType.System
                 });
             }
+        }
+        private void OnMessageReceived(object sender, Message message)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                Messages.Add(message);
+            });
         }
     }
 }
