@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Windows.Input;
 using UdpChatApp.Models;
 using UdpChatApp.Services;
@@ -31,6 +32,18 @@ namespace UdpChatApp.ViewModels
             get => _isConnected;
             set { SetProperty(ref _isConnected, value); }
         }
+        public string MessagesText
+        {
+            get
+            {
+                var sb = new StringBuilder();
+                foreach (var msg in Messages)
+                {
+                    sb.AppendLine($"[{msg.Timestamp:HH:mm:ss}] {msg.SenderName}: {msg.Text}");
+                }
+                return sb.ToString();
+            }
+        }
 
         //команды
         public ICommand SendMessadgeCommand { get; }
@@ -42,6 +55,7 @@ namespace UdpChatApp.ViewModels
             IsConnected = false;
             _networkService = new NetworkService();
             _networkService.MessageReceived += OnMessageReceived;
+            Messages.CollectionChanged += (s, e) => OnPropertyChanged(nameof(MessagesText));
             SendMessadgeCommand = new RelayCommand(execute: SendMessadge, 
                 canExecute: CanSendMessadge);
 
