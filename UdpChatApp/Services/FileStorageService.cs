@@ -42,6 +42,45 @@ namespace UdpChatApp.Services
                 Console.WriteLine($"Ошибка при сохранении сообщения: {ex.Message}");
             }
         }
-        //остановка
+
+        // Загружает историю сообщений из файла
+        //Список строк с историей сообщений
+        public List<string> LoadHistory()
+        {
+            var history = new List<string>();
+
+            // Проверяем, существует ли файл
+            if (!File.Exists(_historyFilePath))
+            {
+                Console.WriteLine("Файл истории не найден. Будет создан новый.");
+                return history; // Возвращаем пустой список
+            }
+
+            try
+            {
+                // Используем StreamReader для чтения файла
+                using (StreamReader reader = new StreamReader(_historyFilePath))
+                {
+                    string line;
+                    // Читаем файл построчно до конца
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        // Добавляем каждую строку в список
+                        if (!string.IsNullOrWhiteSpace(line))
+                        {
+                            history.Add(line);
+                        }
+                    }
+                }
+
+                Console.WriteLine($"Загружено {history.Count} сообщений из истории");
+                return history;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при загрузке истории: {ex.Message}");
+                return history; // Возвращаем пустой список в случае ошибки
+            }
+        }
     }
 }
