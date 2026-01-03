@@ -14,6 +14,7 @@ namespace UdpChatApp.ViewModels
         private string _status;
         private bool _isConnected;
         private readonly NetworkService _networkService;
+        private readonly FileStorageService _fileStorageService;
 
         public ObservableCollection<Message> Messages { get; } = new ObservableCollection<Message>();
 
@@ -46,28 +47,35 @@ namespace UdpChatApp.ViewModels
         }
 
         //команды
-        public ICommand SendMessadgeCommand { get; }
+        public ICommand SendMessageCommand { get; }
         public ICommand ToggleConnectionCommand { get; }
 
         public MainViewModel()
         {
             Status = "Не подключен";
             IsConnected = false;
+
             _networkService = new NetworkService();
             _networkService.MessageReceived += OnMessageReceived;
+
+            _fileStorageService = new FileStorageService();
+
             Messages.CollectionChanged += (s, e) => OnPropertyChanged(nameof(MessagesText));
-            SendMessadgeCommand = new RelayCommand(execute: SendMessadge, 
-                canExecute: CanSendMessadge);
+
+            SendMessageCommand = new RelayCommand(execute: SendMessage, 
+                canExecute: CanSendMessage);
 
             ToggleConnectionCommand = new RelayCommand(execute: ToggleConnection, 
                 canExecute : () => true);
+
+            LoadMessageHistory();
         }
-        private bool CanSendMessadge()
+        private bool CanSendMessage()
         {
             return !string.IsNullOrWhiteSpace(MessageText) && IsConnected; //Проверим, что текст не пустой и не из пробелов и есть подключение к чату
         }
 
-        private void SendMessadge()
+        private void SendMessage()
         {
             var message = new Message
             {
@@ -78,6 +86,7 @@ namespace UdpChatApp.ViewModels
             };
 
             Messages.Add(message);
+            _fileStorageService.SaveMessage(message);
             _networkService.SendMessage(MessageText);
             MessageText = string.Empty;
         }
@@ -109,7 +118,43 @@ namespace UdpChatApp.ViewModels
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 Messages.Add(message);
+                _fileStorageService.SaveMessage(message);
             });
+        }
+        // Метод для загрузки истории сообщений из файла
+        private void LoadMessageHistory()
+        {
+            try
+            {
+                var history = _fileStorageService.LoadHistory();
+
+                if (history.Count == 0)
+                {
+                    Console.WriteLine("История сообщений пуста");
+                    return;
+                }
+
+                foreach (var historyLine in history)
+                {
+                    // Пропускаем пустые строки
+                    if (string.IsNullOrWhiteSpace(historyLine))
+                        continue;
+
+                    Messages.Add(new Message
+                    {
+                        Text = historyLine,
+                        SenderName = "История",
+                        Timestamp = DateTime.Now,
+                        Type = MessageType.System
+                    });
+                }
+
+                Console.WriteLine($"[OK] Загружено {history.Count} сообщений из истории");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Ошибка при загрузке истории: {ex.Message}");
+            }
         }
     }
 }

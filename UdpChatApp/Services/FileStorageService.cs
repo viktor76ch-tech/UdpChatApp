@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using UdpChatApp.Models;
 
 namespace UdpChatApp.Services
@@ -11,14 +12,38 @@ namespace UdpChatApp.Services
         private readonly string _historyFilePath;
         public FileStorageService()
         {
-            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string appFolder = Path.Combine(appDataPath, "UdpChatApp");
+            try
+            {
+                // Получаем путь к папке AppData пользователя
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-            Directory.CreateDirectory(appFolder);
+                // Создаем подпапку для нашего приложения
+                string appFolder = Path.Combine(appDataPath, "UdpChatApp");
 
-            _historyFilePath = Path.Combine(appFolder, "message_history.txt");
-            Console.WriteLine($"Файл истории: {_historyFilePath}");
+                // Создаем папку, если она не существует (безопасный метод)
+                Directory.CreateDirectory(appFolder);
+
+                // Задаем полный путь к файлу истории
+                _historyFilePath = Path.Combine(appFolder, "message_history.txt");
+
+                // Дополнительная проверка: создаем файл, если он не существует
+                if (!File.Exists(_historyFilePath))
+                {
+                    File.WriteAllText(_historyFilePath, "# История сообщений UDP Чата\n", Encoding.UTF8);
+                    Console.WriteLine("Создан новый файл истории");
+                }
+
+                Console.WriteLine($"Файл истории: {_historyFilePath}");
+            }
+            catch (Exception ex)
+            {
+                // В случае ошибки используем резервный путь
+                Console.WriteLine($"Ошибка: {ex.Message}");
+                Console.WriteLine("Используем резервный путь в текущей папке");
+                _historyFilePath = "message_history_backup.txt";
+            }
         }
+
 
         public void SaveMessage(Message message)
         {
@@ -26,7 +51,7 @@ namespace UdpChatApp.Services
             {
                 // 1. Форматируем строку для записи
                 // Формат: [Время] Отправитель: Текст
-                string messageLine = $"[{message.Timestamp:yyyy-MM-dd HH:mm:ss}] {message.SenderName}: {message.Text}";
+                string messageLine = $"[{message.Timestamp:yyyy-MM-dd HH:mm:ss}] [{message.Type}] {message.SenderName}: {message.Text}";
 
                 // 2. Используем StreamWriter с append: true (добавляем в конец файла)
                 // using гарантирует, что файл будет закрыт даже при ошибке
@@ -35,11 +60,11 @@ namespace UdpChatApp.Services
                     writer.WriteLine(messageLine);
                 }
 
-                Console.WriteLine($"Сообщение сохранено в файл: {messageLine}");
+                Console.WriteLine($"[OK] Сообщение сохранено: {message.SenderName}: {message.Text}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка при сохранении сообщения: {ex.Message}");
+                Console.WriteLine($"[ERROR] Ошибка при сохранении: {ex.Message}");
             }
         }
 
