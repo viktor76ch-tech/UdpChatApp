@@ -42,6 +42,8 @@ namespace UdpChatApp.Models
             get => _senderName;
             set => SetProperty(ref _text, value);
         }
+        public string SenderIp { get; set; }
+        public int SenderPort { get; set; }
 
         public string Recipient
         {
