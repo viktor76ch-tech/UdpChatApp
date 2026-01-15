@@ -5,7 +5,6 @@ using System.Windows.Input;
 using UdpChatApp.Models;
 using UdpChatApp.Services;
 
-
 namespace UdpChatApp.ViewModels
 {
     public class MainViewModel : ObservableObject
@@ -21,18 +20,21 @@ namespace UdpChatApp.ViewModels
         public string MessageText
         {
             get => _messageText;
-            set { SetProperty(ref _messageText, value); }
+            set => SetProperty(ref _messageText, value);
         }
+
         public string Status
-        { 
+        {
             get => _status;
-            set { SetProperty(ref _status, value); }
+            set => SetProperty(ref _status, value);
         }
+
         public bool IsConnected
         {
             get => _isConnected;
-            set { SetProperty(ref _isConnected, value); }
+            set => SetProperty(ref _isConnected, value);
         }
+
         public string MessagesText
         {
             get
@@ -40,13 +42,13 @@ namespace UdpChatApp.ViewModels
                 var sb = new StringBuilder();
                 foreach (var msg in Messages)
                 {
-                    sb.AppendLine($"[{msg.Timestamp:HH:mm:ss}] {msg.SenderName}: {msg.Text}");
+                    string prefix = msg.SenderName == "Вы" ? "[Вы]" : $"[{msg.SenderName}]";
+                    sb.AppendLine($"[{msg.Timestamp:HH:mm:ss}] {prefix}: {msg.Text}");
                 }
                 return sb.ToString();
             }
         }
 
-        //команды
         public ICommand SendMessageCommand { get; }
         public ICommand ToggleConnectionCommand { get; }
 
@@ -57,36 +59,31 @@ namespace UdpChatApp.ViewModels
 
             _networkService = new NetworkService();
             _networkService.MessageReceived += OnMessageReceived;
+            _networkService.StatusChanged += OnNetworkStatusChanged;
 
             _fileStorageService = new FileStorageService();
 
             Messages.CollectionChanged += (s, e) => OnPropertyChanged(nameof(MessagesText));
 
-            SendMessageCommand = new RelayCommand(execute: SendMessage, 
+            SendMessageCommand = new RelayCommand(
+                execute: SendMessage,
                 canExecute: CanSendMessage);
 
-            ToggleConnectionCommand = new RelayCommand(execute: ToggleConnection, 
-                canExecute : () => true);
-
-            LoadMessageHistory();
+            ToggleConnectionCommand = new RelayCommand(
+                execute: ToggleConnection,
+                canExecute: () => true);
         }
+
         private bool CanSendMessage()
         {
-            return !string.IsNullOrWhiteSpace(MessageText) && IsConnected; //Проверим, что текст не пустой и не из пробелов и есть подключение к чату
+            return !string.IsNullOrWhiteSpace(MessageText) && IsConnected;
         }
 
         private void SendMessage()
         {
-            var message = new Message
-            {
-                Text = MessageText,
-                SenderName = "Я",
-                Timestamp = DateTime.Now,
-                Type = MessageType.Public
-            };
+            if (string.IsNullOrWhiteSpace(MessageText))
+                return;
 
-            Messages.Add(message);
-            _fileStorageService.SaveMessage(message);
             _networkService.SendMessage(MessageText);
             MessageText = string.Empty;
         }
@@ -96,23 +93,21 @@ namespace UdpChatApp.ViewModels
             if (IsConnected)
             {
                 _networkService.Disconnect();
-                Status = "Не подключен";
                 IsConnected = false;
             }
             else
             {
-                _networkService.Connect("TestUser", "127.0.0.1", 5000);
-                Status = "Подключен";
+                // Для теста используем разные порты
+                int listenPort = 5000;
+                int sendPort = 5001;
+
+                _networkService.Connect("Пользователь1", "127.0.0.1", listenPort, sendPort);
                 IsConnected = true;
-                Messages.Add(new Message
-                {
-                    Text = "Подключение установлено",
-                    SenderName = "Система",
-                    Timestamp = DateTime.Now,
-                    Type = MessageType.System
-                });
+
+                AddSystemMessage("Подключение установлено");
             }
         }
+
         private void OnMessageReceived(object sender, Message message)
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
@@ -121,40 +116,24 @@ namespace UdpChatApp.ViewModels
                 _fileStorageService.SaveMessage(message);
             });
         }
-        // Метод для загрузки истории сообщений из файла
-        private void LoadMessageHistory()
+
+        private void OnNetworkStatusChanged(object sender, string status)
         {
-            try
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                var history = _fileStorageService.LoadHistory();
+                Status = status;
+            });
+        }
 
-                if (history.Count == 0)
-                {
-                    Console.WriteLine("История сообщений пуста");
-                    return;
-                }
-
-                foreach (var historyLine in history)
-                {
-                    // Пропускаем пустые строки
-                    if (string.IsNullOrWhiteSpace(historyLine))
-                        continue;
-
-                    Messages.Add(new Message
-                    {
-                        Text = historyLine,
-                        SenderName = "История",
-                        Timestamp = DateTime.Now,
-                        Type = MessageType.System
-                    });
-                }
-
-                Console.WriteLine($"[OK] Загружено {history.Count} сообщений из истории");
-            }
-            catch (Exception ex)
+        private void AddSystemMessage(string text)
+        {
+            Messages.Add(new Message
             {
-                Console.WriteLine($"[ERROR] Ошибка при загрузке истории: {ex.Message}");
-            }
+                Text = text,
+                SenderName = "Система",
+                Timestamp = DateTime.Now,
+                Type = MessageType.System
+            });
         }
     }
 }
